@@ -2,7 +2,6 @@
   "name": "thermal-print",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "dev": "parcel index.html"
   },
@@ -14,6 +13,7 @@
     "parcel": "^2.0.0-rc.0"
   },
   "dependencies": {
+    "bdf-fonts": "^1.0.1",
     "canvas-dither": "^1.0.1",
     "canvas-flatten": "^1.0.1"
   }

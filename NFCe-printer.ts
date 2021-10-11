@@ -1,5 +1,6 @@
-import type { BDFFont, TAlign } from './bdf-canvas'
+import type { Writer } from 'bdf-fonts'
 import { QRCode, QRErrorCorrectLevel } from './qrcode'
+type TAlign = 'left' | 'center' | 'right'
 
 function getNumeroStr(v: number, decimalOpcional: boolean = false) {
   if (decimalOpcional && Math.round(v) === v) return v.toLocaleString('pt-BR')
@@ -17,7 +18,7 @@ var formatter = new Intl.NumberFormat('pt-BR', {
 
 export function getMoeda(v: string | number) {
   const n = +v
-  return formatter.format(n)
+  return formatter.format(n).replace('\xa0', ' ')
 }
 
 const testNFCe = {
@@ -42,7 +43,7 @@ const testNFCe = {
     xNome: 'Lumer Informática Serviços Digitais LTDA',
     xLgr: 'Av. Rio de Janeiro',
     nro: '1060',
-    xBairro: 'Centro',
+    xBairro: 'center',
     xMun: 'Santa Gertrudes do Assaí de Baixo',
     UF: 'PR',
   },
@@ -90,7 +91,7 @@ const testProtNFe = {
 
 export class Printer {
   constructor(
-    private readonly escritor: BDFFont,
+    private readonly escritor: Writer,
     private readonly largura: number,
     private readonly nfce = testNFCe,
     private readonly infNFeSupl = testInfNFeSupl,
@@ -124,29 +125,30 @@ export class Printer {
   }
 
   private escritaDupla(esquerda: string, direita: string) {
-    this.escritor.writeText(esquerda, 0, this.posicao, this.largura, 'esquerda')
+    this.escritor.writeText(esquerda, 0, this.posicao, this.largura, 'left')
     this.posicao = this.escritor.writeText(
       direita,
       0,
       this.posicao,
       this.largura,
-      'direita'
+      'right'
     )
   }
 
-  private espaco(altura: number = this.escritor.size) {
+  private espaco(altura: number = this.escritor.lineHeight) {
     this.posicao += altura
   }
 
   private parteI() {
+    this.espaco()
     const emit = this.nfce.emit
-    this.escrever(emit.xNome, 'centro')
-    this.escrever('CNPJ: ' + emit.CNPJ, 'centro')
+    this.escrever(emit.xNome, 'center')
+    this.escrever('CNPJ: ' + emit.CNPJ, 'center')
     const endereco = [emit.xLgr, emit.nro, emit.xBairro, emit.xMun, emit.UF]
-    this.escrever(endereco.join(', '), 'centro')
+    this.escrever(endereco.join(', '), 'center')
     this.espaco()
     const tipo = 'Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'
-    this.escrever(tipo, 'centro')
+    this.escrever(tipo, 'center')
     this.espaco()
   }
 
@@ -184,12 +186,12 @@ export class Printer {
     const restante = this.largura - larguras.reduce((p, v) => p + v, 0)
     larguras.splice(1, 0, restante)
     const alinhamentos: TAlign[] = [
-      'esquerda',
-      'esquerda',
-      'direita',
-      'esquerda',
-      'direita',
-      'direita',
+      'left',
+      'left',
+      'right',
+      'left',
+      'right',
+      'right',
     ]
     const data = this.nfce.det.map((v) => [
       v.cProd,
@@ -222,14 +224,14 @@ export class Printer {
   }
 
   private parteIV() {
-    this.escrever('Consulte pela chave de acesso em', 'centro')
-    this.escrever(this.infNFeSupl.urlChave, 'centro')
+    this.escrever('Consulte pela chave de acesso em', 'center')
+    this.escrever(this.infNFeSupl.urlChave, 'center')
     const chave = this.nfce.Id.substr(3).match(/.{4}/g).join(' ')
-    this.escrever(chave, 'centro')
+    this.escrever(chave, 'center')
     this.espaco()
   }
 
-  QR(url: string) {
+  private QR(url: string) {
     var qr = new QRCode(8, QRErrorCorrectLevel.M)
     qr.addData(url)
     qr.make()
@@ -261,20 +263,20 @@ export class Printer {
   private parteVI() {
     const dest = this.nfce.dest
     if (dest) {
-      this.escrever('CONSUMIDOR', 'centro')
-      if (dest.xNome) this.escrever(dest.xNome, 'centro')
+      this.escrever('CONSUMIDOR', 'center')
+      if (dest.xNome) this.escrever(dest.xNome, 'center')
       const d = dest as any
       if (d.CPF) {
-        this.escrever('CPF: ' + d.CPF, 'centro')
+        this.escrever('CPF: ' + d.CPF, 'center')
       } else if (dest.CNPJ) {
-        this.escrever('CNPJ: ' + dest.CNPJ, 'centro')
+        this.escrever('CNPJ: ' + dest.CNPJ, 'center')
       } else if (d.idEstrangeiro) {
-        this.escrever('Id. estrangeiro: ' + d.idEstrangeiro, 'centro')
+        this.escrever('Id. estrangeiro: ' + d.idEstrangeiro, 'center')
       }
       const endereco = [dest.xLgr, dest.nro, dest.xBairro, dest.xMun, dest.UF]
-      this.escrever(endereco.join(', '), 'centro')
+      this.escrever(endereco.join(', '), 'center')
     } else {
-      this.escrever('CONSUMIDOR NÃO IDENTIFICADO', 'centro')
+      this.escrever('CONSUMIDOR NÃO IDENTIFICADO', 'center')
     }
     this.espaco()
   }
@@ -291,17 +293,17 @@ export class Printer {
 
   private parteVIII() {
     const infAdFisco = (this.nfce as any).infAdic?.infAdFisco
-    if (infAdFisco) this.escrever(infAdFisco, 'esquerda')
+    if (infAdFisco) this.escrever(infAdFisco, 'left')
     const xMsg = (this.protNFe as any).xMsg
-    if (xMsg) this.escrever(xMsg, 'esquerda')
+    if (xMsg) this.escrever(xMsg, 'left')
     if (this.nfce.ide.tpAmb === 2) {
-      const aviso = 'EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO – SEM VALOR FISCAL'
-      this.escrever(aviso, 'centro')
+      const aviso = 'EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL'
+      this.escrever(aviso, 'center')
     }
   }
 
   private parteIX() {
     const infCpl = (this.nfce as any).infAdic?.infCpl
-    if (infCpl) this.escrever(infCpl, 'esquerda')
+    if (infCpl) this.escrever(infCpl, 'left')
   }
 }

@@ -1,23 +1,22 @@
 import { EscPosEncoder } from './esc-pos-encoder'
-import { BDFFont } from './bdf-canvas'
+import { Writer, Fonts } from 'bdf-fonts'
 import { Printer } from './NFCe-printer'
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 var ctx = canvas.getContext('2d')
 
 const txt = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla vehicula nunc eu lacus tincidunt tincidunt.'
-fetch('./cozette.bdf').then(async (res) => {
-  const bdfbody = await res.text()
-  const font = new BDFFont(ctx, bdfbody)
-  // const newHeight = font.writeText(txt, 0, 0, canvas.width, 'centro')
-  const printer = new Printer(font, canvas.width)
-  resizeCanvas(printer.alturaFinal)
-  // A inserção do logotipo pode ocorrer após o resize, onde o y inicial teria o offset do logotipo, interessante pôr também a opção de impressão do logotipo da NFC-e como disposto na seção 3.1.1
-  // DownloadCanvasAsImage()
-})
+const fonte = Fonts.Boxxy[1]
+const writer = new Writer(ctx, fonte.data, fonte.size)
+// writer.writeText(txt, 0, 48, canvas.width, 'left')
+const printer = new Printer(writer, canvas.width)
+resizeCanvas(printer.alturaFinal)
+// A inserção do logotipo pode ocorrer após o resize, onde o y inicial teria o offset do logotipo, interessante pôr também a opção de impressão do logotipo da NFC-e como disposto na seção 3.1.1
+// DownloadCanvasAsImage()
 
 function resizeCanvas(newHeight: number) {
   newHeight += 1
+  if (newHeight % 8) newHeight = Math.ceil(newHeight / 8) * 8
   const data = ctx.getImageData(0, 0, canvas.width, newHeight)
   canvas.height = newHeight
   ctx.putImageData(data, 0, 0)
