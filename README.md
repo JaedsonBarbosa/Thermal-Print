@@ -5,8 +5,8 @@ PREMETAS:
 METAS:
 OK  Usando o BDF Viewer, escolher quais as melhores fontes:
 OK  Precompilar fontes e guardar apenas as informações essenciais
-    Criar selecao de fonte e impressao geral para testar todas as fontes, deve usar optgroup para organizar por size
     Usando alguma das fontes para testes, implementar trechos em negrito com base no manual
+    Criar selecao de fonte e impressao geral para testar todas as fontes, deve usar optgroup para organizar por size
     Mover tudo e integrar no projeto principal, mas não devemos apagar este projeto, ele pode virar um projeto autonomo futuramente
 
 METAS pos finalizacao:

@@ -1,5 +1,5 @@
 import type { Writer } from 'bdf-fonts'
-import { QRCode, QRErrorCorrectLevel } from './qrcode'
+import { makeQR, QRErrorCorrectLevel } from 'minimal-qr-code'
 type TAlign = 'left' | 'center' | 'right'
 
 function getNumeroStr(v: number, decimalOpcional: boolean = false) {
@@ -27,7 +27,7 @@ const testNFCe = {
     nNF: 7,
     serie: 1,
     dhEmi: '2021-10-02T19:59:54-03:00',
-    tpAmb: 2
+    tpAmb: 2,
   },
   emit: {
     xNome: 'SEVERINO ALVES SERAFIM',
@@ -86,7 +86,7 @@ const testInfNFeSupl = {
 
 const testProtNFe = {
   nProt: '325210000035406',
-  dhRecbto: '2021-10-02T20:00:42-03:00'
+  dhRecbto: '2021-10-02T20:00:42-03:00',
 }
 
 export class Printer {
@@ -101,7 +101,7 @@ export class Printer {
     this.parteII()
     this.parteIII()
     this.parteIV()
-    this.parteVI() 
+    this.parteVI()
     this.parteVII()
     this.parteV() // sim, isso eh estranho, mas ta certo
     this.parteVIII()
@@ -140,7 +140,7 @@ export class Printer {
   }
 
   private parteI() {
-    this.espaco()
+    // this.espaco()
     const emit = this.nfce.emit
     this.escrever(emit.xNome, 'center')
     this.escrever('CNPJ: ' + emit.CNPJ, 'center')
@@ -232,17 +232,13 @@ export class Printer {
   }
 
   private QR(url: string) {
-    var qr = new QRCode(8, QRErrorCorrectLevel.M)
-    qr.addData(url)
-    qr.make()
-
-    var qrsize = qr.getModuleCount()
+    var { size: qrsize, isDark } = makeQR(url, 8, QRErrorCorrectLevel.M)
     const dotsize = Math.floor((this.largura * 0.8) / qrsize)
     const padding = Math.floor((this.largura - dotsize * qrsize) / 2)
 
     for (var r = 0; r < qrsize; r++) {
       for (var c = 0; c < qrsize; c++) {
-        if (qr.isDark(r, c)) {
+        if (isDark(r, c)) {
           this.escritor.ctx.fillRect(
             c * dotsize + padding,
             r * dotsize + padding + this.posicao,
