@@ -2,6 +2,8 @@
   "include": ["src"],
   "compilerOptions": {
     "target": "ES6",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "strict": true,
+    "alwaysStrict": true
   }
 }

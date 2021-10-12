@@ -1,4 +1,4 @@
-import type { Writer } from 'bdf-fonts'
+import { Fonts, Writer } from 'bdf-fonts'
 import { makeQR, QRErrorCorrectLevel } from 'minimal-qr-code'
 type TAlign = 'left' | 'center' | 'right'
 
@@ -89,53 +89,100 @@ const testProtNFe = {
   dhRecbto: '2021-10-02T20:00:42-03:00',
 }
 
+export type FontFamily = keyof typeof Fonts
+
 export class Printer {
+  private readonly fonteRegular: typeof Fonts.Boxxy[0]
+  private readonly fonteNegrito: typeof Fonts.Boxxy[0]
+  private readonly escritor: Writer
+  private posicao = 0
+
   constructor(
-    private readonly escritor: Writer,
+    familiaFonte: FontFamily,
+    private tamanho: number,
     private readonly largura: number,
     private readonly nfce = testNFCe,
     private readonly infNFeSupl = testInfNFeSupl,
     private readonly protNFe = testProtNFe
   ) {
+    // Definir fonte
+    const regular = Fonts[familiaFonte].find((v) => v.size === tamanho)
+    const negrito = Fonts[familiaFonte].find((v) => v.size === tamanho)
+    if (!regular || !negrito) throw new Error('Fonte não encontrada.')
+    this.fonteRegular = regular
+    this.fonteNegrito = negrito
+
+    // Preparar escritor
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')!
+    this.escritor = new Writer(context, regular.data, tamanho)
+
+    // Montar trechos do DANFE
     this.parteI()
     this.parteII()
     this.parteIII()
     this.parteIV()
     this.parteVI()
     this.parteVII()
-    this.parteV() // sim, isso eh estranho, mas ta certo
+    this.parteV() // sim, isso eh estranho, mas estah certo
     this.parteVIII()
     this.parteIX()
   }
 
-  private posicao = 0
+  public async renderizarEGerarLink(outCanvas: HTMLCanvasElement) {
+    const largura = this.largura
+    const altura = Math.ceil((this.posicao + 1) / 8) * 8
+    const inContext = this.escritor.ctx
+    const data = inContext.getImageData(0, 0, largura, altura)
+    outCanvas.width = largura
+    outCanvas.height = altura
+    const outContext = outCanvas.getContext('2d')!
+    outContext.putImageData(data, 0, 0)
 
-  public get alturaFinal(): number {
-    return this.posicao
-  }
-
-  private escrever(texto: string, alinhamento: TAlign) {
-    this.posicao = this.escritor.writeText(
-      texto,
-      0,
-      this.posicao,
-      this.largura,
-      alinhamento
+    let downloadLink = document.createElement('a')
+    downloadLink.setAttribute('download', `${this.chave}-DANFE.png`)
+    const url: string = await new Promise((res) =>
+      outCanvas.toBlob((blob) => res(URL.createObjectURL(blob)))
     )
+    return url
   }
 
-  private escritaDupla(esquerda: string, direita: string) {
-    this.escritor.writeText(esquerda, 0, this.posicao, this.largura, 'left')
-    this.posicao = this.escritor.writeText(
-      direita,
-      0,
-      this.posicao,
-      this.largura,
-      'right'
-    )
+  private regular(t: string, x: number, y: number, mw: number, alin: TAlign) {
+    if (!this.fonteRegular) throw new Error('Fonte não selecionada.')
+    this.escritor.bdf = this.fonteRegular.data
+    return this.escritor.writeText(t, x, y, mw, alin)
   }
 
-  private espaco(altura: number = this.escritor.lineHeight) {
+  private negrito(t: string, x: number, y: number, mw: number, alin: TAlign) {
+    if (!this.fonteNegrito) throw new Error('Fonte não selecionada.')
+    this.escritor.bdf = this.fonteNegrito.data
+    return this.escritor.writeText(t, x, y, mw, alin)
+  }
+
+  private escrever(texto: string, alin: TAlign, negrito: boolean = false) {
+    this.posicao = negrito
+      ? this.negrito(texto, 0, this.posicao, this.largura, alin)
+      : this.regular(texto, 0, this.posicao, this.largura, alin)
+  }
+
+  private escritaDupla(
+    esquerda: string,
+    direita: string,
+    esquerdaNegrido: boolean = false,
+    direitaNegrito: boolean = false
+  ) {
+    const larguraE = Math.floor((this.largura * 3) / 4)
+    const larguraD = this.largura - larguraE
+    const novaPosicaoE = esquerdaNegrido
+      ? this.negrito(esquerda, 0, this.posicao, larguraE, 'left')
+      : this.regular(esquerda, 0, this.posicao, larguraE, 'left')
+    const novaPosicaoD = direitaNegrito
+      ? this.negrito(direita, larguraE, this.posicao, larguraD, 'right')
+      : this.regular(direita, larguraE, this.posicao, larguraD, 'right')
+    this.posicao = novaPosicaoD > novaPosicaoE ? novaPosicaoD : novaPosicaoE
+  }
+
+  private espaco(altura: number = this.tamanho) {
     this.posicao += altura
   }
 
@@ -164,18 +211,15 @@ export class Printer {
       let x = 0
       const yAtual = y
       for (let i = 0; i < linha.length; i++) {
-        const coluna = linha[i]
-        const largura = larguras[i]
-        const alinhamento = alinhamentos[i]
-        const novoY = this.escritor.writeText(
-          coluna,
+        const novoY = (i === 0 ? this.negrito : this.regular)(
+          linha[i],
           x,
           yAtual,
-          largura,
-          alinhamento
+          larguras[i],
+          alinhamentos[i]
         )
         if (novoY > y) y = novoY
-        x += largura
+        x += larguras[i]
       }
     }
     this.posicao = y
@@ -226,9 +270,13 @@ export class Printer {
   private parteIV() {
     this.escrever('Consulte pela chave de acesso em', 'center')
     this.escrever(this.infNFeSupl.urlChave, 'center')
-    const chave = this.nfce.Id.substr(3).match(/.{4}/g).join(' ')
+    const chave = this.chave.match(/.{4}/g)!.join(' ')
     this.escrever(chave, 'center')
     this.espaco()
+  }
+
+  private get chave() {
+    return this.nfce.Id.substr(3)
   }
 
   private QR(url: string) {
