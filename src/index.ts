@@ -5,11 +5,10 @@ import { Printer } from './NFCe-printer'
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 var ctx = canvas.getContext('2d')
 
-const txt =
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla vehicula nunc eu lacus tincidunt tincidunt.'
-const fonte = Fonts.Boxxy[1]
+const txt = 'Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'
+const fonte = Fonts.Sq[1]
 const writer = new Writer(ctx, fonte.data, fonte.size)
-// const alturaFinal = writer.writeText(txt, 0, 0, canvas.width, 'left')
+// const alturaFinal = writer.writeText(txt, 0, 0, canvas.width, 'center')
 const printer = new Printer(writer, canvas.width)
 const alturaFinal = printer.alturaFinal
 resizeCanvas(alturaFinal)
