@@ -11,6 +11,10 @@ function getInteiroStr(v: number, l: number) {
   return v.toLocaleString('pt-BR', { minimumIntegerDigits: l })
 }
 
+function getData(v: string) {
+  return new Date(v).toLocaleString('pt-BR')
+}
+
 var formatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -89,6 +93,12 @@ const testProtNFe = {
   dhRecbto: '2021-10-02T20:00:42-03:00',
 }
 
+export enum TamanhoQR {
+  P = 0.4,
+  M = 0.6,
+  G = 0.8,
+}
+
 export type FontFamily = keyof typeof Fonts
 
 export class Printer {
@@ -101,19 +111,23 @@ export class Printer {
     familiaFonte: FontFamily,
     private tamanho: number,
     private readonly largura: number,
+    private readonly tamanhoQR: TamanhoQR,
     private readonly nfce = testNFCe,
     private readonly infNFeSupl = testInfNFeSupl,
     private readonly protNFe = testProtNFe
   ) {
     // Definir fonte
-    const regular = Fonts[familiaFonte].find((v) => v.size === tamanho)
-    const negrito = Fonts[familiaFonte].find((v) => v.size === tamanho)
+    const fontes = Fonts[familiaFonte]
+    const regular = fontes.find((v) => v.size === tamanho && !v.bold)
+    const negrito = fontes.find((v) => v.size === tamanho && v.bold)
     if (!regular || !negrito) throw new Error('Fonte não encontrada.')
     this.fonteRegular = regular
     this.fonteNegrito = negrito
 
     // Preparar escritor
     const canvas = document.createElement('canvas')
+    canvas.width = largura
+    canvas.height = 10000
     const context = canvas.getContext('2d')!
     this.escritor = new Writer(context, regular.data, tamanho)
 
@@ -125,8 +139,7 @@ export class Printer {
     this.parteVI()
     this.parteVII()
     this.parteV() // sim, isso eh estranho, mas estah certo
-    this.parteVIII()
-    this.parteIX()
+    this.parteVIIIeIX()
   }
 
   public async renderizarEGerarLink(outCanvas: HTMLCanvasElement) {
@@ -168,10 +181,11 @@ export class Printer {
   private escritaDupla(
     esquerda: string,
     direita: string,
+    proporcao: number = 0.7,
     esquerdaNegrido: boolean = false,
     direitaNegrito: boolean = false
   ) {
-    const larguraE = Math.floor((this.largura * 3) / 4)
+    const larguraE = Math.floor(this.largura * proporcao)
     const larguraD = this.largura - larguraE
     const novaPosicaoE = esquerdaNegrido
       ? this.negrito(esquerda, 0, this.posicao, larguraE, 'left')
@@ -187,15 +201,15 @@ export class Printer {
   }
 
   private parteI() {
-    // this.espaco()
+    this.espaco()
     const emit = this.nfce.emit
-    this.escrever(emit.xNome, 'center')
+    this.escrever(emit.xNome, 'center', true)
     this.escrever('CNPJ: ' + emit.CNPJ, 'center')
     const endereco = [emit.xLgr, emit.nro, emit.xBairro, emit.xMun, emit.UF]
     this.escrever(endereco.join(', '), 'center')
     this.espaco()
     const tipo = 'Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica'
-    this.escrever(tipo, 'center')
+    this.escrever(tipo, 'center', true)
     this.espaco()
   }
 
@@ -207,26 +221,24 @@ export class Printer {
       throw new Error('Todas as colunas devem ter um alinhamento')
     }
     let y = this.posicao
+    let negrito = true
     for (const linha of data) {
       let x = 0
       const yAtual = y
       for (let i = 0; i < linha.length; i++) {
-        const novoY = (i === 0 ? this.negrito : this.regular)(
-          linha[i],
-          x,
-          yAtual,
-          larguras[i],
-          alinhamentos[i]
-        )
+        const novoY = negrito
+          ? this.negrito(linha[i], x, yAtual, larguras[i], alinhamentos[i])
+          : this.regular(linha[i], x, yAtual, larguras[i], alinhamentos[i])
         if (novoY > y) y = novoY
         x += larguras[i]
       }
+      negrito = false
     }
     this.posicao = y
   }
 
   private parteII() {
-    const larguras = [40, 40, 50, 60, 60]
+    const larguras = [40, 40, 60, 60, 60]
     const restante = this.largura - larguras.reduce((p, v) => p + v, 0)
     larguras.splice(1, 0, restante)
     const alinhamentos: TAlign[] = [
@@ -251,6 +263,7 @@ export class Printer {
   }
 
   private parteIII() {
+    this.escrever('Totais', 'center', true)
     this.escritaDupla('Qtde. total de itens', this.nfce.det.length.toString())
     const { vFrete, vSeg, vOutro, vProd, vDesc, vNF } = this.nfce.total.ICMSTot
     this.escritaDupla('Valor total', getMoeda(vProd))
@@ -259,8 +272,7 @@ export class Printer {
     if (vOutro) this.escritaDupla('Outras despesas', getMoeda(vOutro))
     if (vDesc) this.escritaDupla('Desconto total', '- ' + getMoeda(vDesc))
     this.escritaDupla('Valor a pagar', getMoeda(vNF))
-    this.espaco()
-    this.escritaDupla('FORMA DE PAGAMENTO', 'VALOR PAGO')
+    this.escritaDupla('Forma de pagamento', 'Valor pago', 0.7, true, true)
     const pag = this.nfce.pag
     pag.detPag.forEach((v) => this.escritaDupla(v.tPag, getMoeda(v.vPag)))
     this.escritaDupla('Valor do troco', getMoeda(pag.vTroco || 0))
@@ -268,7 +280,7 @@ export class Printer {
   }
 
   private parteIV() {
-    this.escrever('Consulte pela chave de acesso em', 'center')
+    this.escrever('Consulte pela chave de acesso em', 'center', true)
     this.escrever(this.infNFeSupl.urlChave, 'center')
     const chave = this.chave.match(/.{4}/g)!.join(' ')
     this.escrever(chave, 'center')
@@ -279,17 +291,23 @@ export class Printer {
     return this.nfce.Id.substr(3)
   }
 
-  private QR(url: string) {
+  private parteV() {
+    const url = this.infNFeSupl.qrCode
+
     var { size: qrsize, isDark } = makeQR(url, 8, QRErrorCorrectLevel.M)
-    const dotsize = Math.floor((this.largura * 0.8) / qrsize)
-    const padding = Math.floor((this.largura - dotsize * qrsize) / 2)
+    // QR com mínimo de 23mm em papel de 58mm (1mm de margem de segurança)
+    const dotsize = Math.floor((this.largura * this.tamanhoQR) / qrsize)
+    // Mínimo de 10% de margem segura
+    const paddingV = Math.ceil((dotsize * qrsize) / 10)
+    // Centralizar QR
+    const paddingH = Math.floor((this.largura - dotsize * qrsize) / 2)
 
     for (var r = 0; r < qrsize; r++) {
       for (var c = 0; c < qrsize; c++) {
         if (isDark(r, c)) {
           this.escritor.ctx.fillRect(
-            c * dotsize + padding,
-            r * dotsize + padding + this.posicao,
+            c * dotsize + paddingH,
+            r * dotsize + paddingV + this.posicao,
             dotsize,
             dotsize
           ) // x, y, w, h
@@ -297,17 +315,13 @@ export class Printer {
       }
     }
 
-    this.posicao += qrsize * dotsize + padding * 2
-  }
-
-  private parteV() {
-    this.QR(this.infNFeSupl.qrCode)
+    this.posicao += qrsize * dotsize + paddingV * 2
   }
 
   private parteVI() {
     const dest = this.nfce.dest
+    this.escrever('Consumidor', 'center', true)
     if (dest) {
-      this.escrever('CONSUMIDOR', 'center')
       if (dest.xNome) this.escrever(dest.xNome, 'center')
       const d = dest as any
       if (d.CPF) {
@@ -328,26 +342,32 @@ export class Printer {
   private parteVII() {
     const nNF = getInteiroStr(this.nfce.ide.nNF, 9)
     const serie = getInteiroStr(this.nfce.ide.serie, 3)
-    const dhEmi = new Date(this.nfce.ide.dhEmi).toLocaleString('pt-BR')
-    this.escritaDupla('NFC-e nº: ' + nNF + ', série: ' + serie, dhEmi)
-    this.escritaDupla('Protocolo de autorização:', this.protNFe.nProt)
-    const dhRecbto = new Date(this.protNFe.dhRecbto).toLocaleString('pt-BR')
-    this.escritaDupla('Data de autorização:', dhRecbto)
+    const dhEmi = getData(this.nfce.ide.dhEmi)
+    this.escrever('Identificação e autorização', 'center', true)
+    this.escritaDupla('Número:', nNF, 0.5)
+    this.escritaDupla('Série:', serie, 0.5)
+    this.escritaDupla('Data de emissão:', dhEmi, 0.5)
+    const nProt = this.protNFe.nProt
+    const dhRecbto = getData(this.protNFe.dhRecbto)
+    this.escritaDupla('Protocolo de autorização:', nProt, 0.5)
+    this.escritaDupla('Data de autorização:', dhRecbto, 0.5)
   }
 
-  private parteVIII() {
-    const infAdFisco = (this.nfce as any).infAdic?.infAdFisco
-    if (infAdFisco) this.escrever(infAdFisco, 'left')
+  private parteVIIIeIX() {
+    const infAdic = (this.nfce as any).infAdic
+    const infAdFisco = infAdic?.infAdFisco
+    const infCpl =infAdic?.infCpl
     const xMsg = (this.protNFe as any).xMsg
-    if (xMsg) this.escrever(xMsg, 'left')
-    if (this.nfce.ide.tpAmb === 2) {
-      const aviso = 'EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL'
-      this.escrever(aviso, 'center')
+    const homolog = this.nfce.ide.tpAmb === 2
+    if (infAdFisco || xMsg || homolog) {
+      if (infAdFisco) this.escrever(infAdFisco, 'left')
+      if (xMsg) this.escrever(xMsg, 'left')
+      if (homolog) {
+        const aviso = 'EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL'
+        this.escrever(aviso, 'center')
+      }
+      if (infCpl) this.espaco()
     }
-  }
-
-  private parteIX() {
-    const infCpl = (this.nfce as any).infAdic?.infCpl
-    if (infCpl) this.escrever(infCpl, 'left')
+    if (infCpl) this.escrever(infCpl, 'center')
   }
 }
