@@ -112,6 +112,7 @@ export class Printer {
     private tamanho: number,
     private readonly largura: number,
     private readonly tamanhoQR: TamanhoQR,
+    private readonly logotipo: ImageData | undefined = undefined,
     private readonly nfce = testNFCe,
     private readonly infNFeSupl = testInfNFeSupl,
     private readonly protNFe = testProtNFe
@@ -132,6 +133,7 @@ export class Printer {
     this.escritor = new Writer(context, regular.data, tamanho)
 
     // Montar trechos do DANFE
+    this.parte0()
     this.parteI()
     this.parteII()
     this.parteIII()
@@ -142,7 +144,15 @@ export class Printer {
     this.parteVIIIeIX()
   }
 
-  public async renderizarEGerarLink(outCanvas: HTMLCanvasElement) {
+  parte0() {
+    if (this.logotipo) {
+      this.escritor.ctx.putImageData(this.logotipo, 0, 0)
+      this.posicao += this.logotipo.height
+    }
+    this.espaco()
+  }
+
+  async renderizarEGerarLink(outCanvas: HTMLCanvasElement) {
     const largura = this.largura
     const altura = Math.ceil((this.posicao + 1) / 8) * 8
     const inContext = this.escritor.ctx
@@ -152,8 +162,6 @@ export class Printer {
     const outContext = outCanvas.getContext('2d')!
     outContext.putImageData(data, 0, 0)
 
-    let downloadLink = document.createElement('a')
-    downloadLink.setAttribute('download', `${this.chave}-DANFE.png`)
     const url: string = await new Promise((res) =>
       outCanvas.toBlob((blob) => res(URL.createObjectURL(blob)))
     )
@@ -201,7 +209,6 @@ export class Printer {
   }
 
   private parteI() {
-    this.espaco()
     const emit = this.nfce.emit
     this.escrever(emit.xNome, 'center', true)
     this.escrever('CNPJ: ' + emit.CNPJ, 'center')
@@ -356,7 +363,7 @@ export class Printer {
   private parteVIIIeIX() {
     const infAdic = (this.nfce as any).infAdic
     const infAdFisco = infAdic?.infAdFisco
-    const infCpl =infAdic?.infCpl
+    const infCpl = infAdic?.infCpl
     const xMsg = (this.protNFe as any).xMsg
     const homolog = this.nfce.ide.tpAmb === 2
     if (infAdFisco || xMsg || homolog) {

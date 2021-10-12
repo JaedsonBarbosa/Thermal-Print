@@ -1,16 +1,19 @@
-import { connectToPrinter, CutTypes, ImageModes } from 'browser-thermal-printer-encoder'
+import {
+  connectToPrinter,
+  CutTypes,
+  ImageModes,
+} from 'browser-thermal-printer-encoder'
 import { Writer, Fonts } from 'bdf-fonts'
 import { Printer, TamanhoQR } from './NFCe-printer'
+import { CanvasDither } from './CanvasDither'
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 var ctx = canvas.getContext('2d')
-
-// const alturaFinal = writer.writeText(txt, 0, 0, canvas.width, 'center')
-const printer = new Printer('Terminus', 16, canvas.width, TamanhoQR.P)
-printer.renderizarEGerarLink(canvas).then(v => console.log(v))
-
-// A inserção do logotipo pode ocorrer após o resize, onde o y inicial teria o offset do logotipo, interessante pôr também a opção de impressão do logotipo da NFC-e como disposto na seção 3.1.1
-// DownloadCanvasAsImage()
+const logotipoCanvas = document.getElementById('logotipo') as HTMLCanvasElement
+CanvasDither.create('./icon.jpeg', logotipoCanvas).then((dither) => {
+  const printer = new Printer('Terminus', 16, canvas.width, TamanhoQR.P)
+  printer.renderizarEGerarLink(canvas).then((v) => console.log(v))
+})
 
 async function escolher() {
   const printCanvas = await connectToPrinter()
