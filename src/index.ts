@@ -3,17 +3,25 @@ import {
   CutTypes,
   ImageModes,
 } from 'browser-thermal-printer-encoder'
-import { Writer, Fonts } from 'bdf-fonts'
 import { Printer, TamanhoQR } from './NFCe-printer'
-import { CanvasDither } from './CanvasDither'
+import { CanvasDither, TamanhoImagem } from './CanvasDither'
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
-var ctx = canvas.getContext('2d')
 const logotipoCanvas = document.getElementById('logotipo') as HTMLCanvasElement
-CanvasDither.create('./icon.jpeg', logotipoCanvas).then((dither) => {
-  const printer = new Printer('Terminus', 16, canvas.width, TamanhoQR.P)
-  printer.renderizarEGerarLink(canvas).then((v) => console.log(v))
-})
+const width = canvas.width
+CanvasDither.create('./icon.jpeg', width, TamanhoImagem.P, logotipoCanvas).then(
+  async (dither) => {
+    const printer = new Printer(
+      'Terminus',
+      16,
+      width,
+      TamanhoQR.P,
+      dither.imageData
+    )
+    const link = await printer.renderizarEGerarLink(canvas)
+    console.log(link)
+  }
+)
 
 async function escolher() {
   const printCanvas = await connectToPrinter()

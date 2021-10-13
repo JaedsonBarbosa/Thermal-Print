@@ -146,7 +146,8 @@ export class Printer {
 
   parte0() {
     if (this.logotipo) {
-      this.escritor.ctx.putImageData(this.logotipo, 0, 0)
+      const paddingH = Math.floor((this.largura - this.logotipo.width) / 2)
+      this.escritor.ctx.putImageData(this.logotipo, paddingH, 0)
       this.posicao += this.logotipo.height
     }
     this.espaco()
@@ -245,8 +246,11 @@ export class Printer {
   }
 
   private parteII() {
-    const larguras = [40, 40, 60, 60, 60]
-    const restante = this.largura - larguras.reduce((p, v) => p + v, 0)
+    const larguras = [0.1, 0.1, 0.15, 0.15, 0.15]
+      .map((v) => this.largura * v)
+      .map(Math.round)
+    const somatorio = larguras.reduce((p, v) => p + v, 0)
+    const restante = this.largura - somatorio
     larguras.splice(1, 0, restante)
     const alinhamentos: TAlign[] = [
       'left',
