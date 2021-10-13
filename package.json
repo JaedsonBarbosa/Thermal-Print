@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bdf-fonts": "^1.0.3",
+    "bdf-fonts": "^1.1.3",
     "browser-thermal-printer-encoder": "^2.1.1",
     "minimal-qr-code": "^1.1.1"
   },

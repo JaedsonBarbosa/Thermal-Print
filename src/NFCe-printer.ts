@@ -109,7 +109,8 @@ export class Printer {
 
   constructor(
     familiaFonte: FontFamily,
-    private tamanho: number,
+    private readonly tamanho: number,
+    private readonly escala: 1 | 2,
     private readonly largura: number,
     private readonly tamanhoQR: TamanhoQR,
     private readonly logotipo: ImageData | undefined = undefined,
@@ -130,7 +131,7 @@ export class Printer {
     canvas.width = largura
     canvas.height = 10000
     const context = canvas.getContext('2d')!
-    this.escritor = new Writer(context, regular.data, tamanho)
+    this.escritor = new Writer(context, regular.data, tamanho, escala)
 
     // Montar trechos do DANFE
     this.parte0()
@@ -190,7 +191,7 @@ export class Printer {
   private escritaDupla(
     esquerda: string,
     direita: string,
-    proporcao: number = 0.7,
+    proporcao: number = 0.6,
     esquerdaNegrido: boolean = false,
     direitaNegrito: boolean = false
   ) {
@@ -205,8 +206,8 @@ export class Printer {
     this.posicao = novaPosicaoD > novaPosicaoE ? novaPosicaoD : novaPosicaoE
   }
 
-  private espaco(altura: number = this.tamanho) {
-    this.posicao += altura
+  private espaco() {
+    this.posicao += this.tamanho * this.escala
   }
 
   private parteI() {
@@ -283,7 +284,7 @@ export class Printer {
     if (vOutro) this.escritaDupla('Outras despesas', getMoeda(vOutro))
     if (vDesc) this.escritaDupla('Desconto total', '- ' + getMoeda(vDesc))
     this.escritaDupla('Valor a pagar', getMoeda(vNF))
-    this.escritaDupla('Forma de pagamento', 'Valor pago', 0.7, true, true)
+    this.escritaDupla('Forma de pagamento', 'Valor pago', 0.6, true, true)
     const pag = this.nfce.pag
     pag.detPag.forEach((v) => this.escritaDupla(v.tPag, getMoeda(v.vPag)))
     this.escritaDupla('Valor do troco', getMoeda(pag.vTroco || 0))

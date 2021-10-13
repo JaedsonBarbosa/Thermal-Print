@@ -12,8 +12,8 @@ const width = canvas.width
 CanvasDither.create('./icon.jpeg', width, TamanhoImagem.P, logotipoCanvas).then(
   async (dither) => {
     const printer = new Printer(
-      'Terminus',
-      16,
+      'Cherry',
+      10, 1,
       width,
       TamanhoQR.P,
       dither.imageData
