@@ -3,23 +3,20 @@ import {
   CutTypes,
   ImageModes,
 } from 'browser-thermal-printer-encoder'
-import { Printer, TamanhoQR } from './NFCe-printer'
+import { Fonts } from 'bdf-fonts'
+import { montar, TamanhoQR } from './impressao-nfce'
 import { CanvasDither, TamanhoImagem } from './CanvasDither'
 
 const canvas = document.getElementById('canvas') as HTMLCanvasElement
 const logotipoCanvas = document.getElementById('logotipo') as HTMLCanvasElement
 const width = canvas.width
+
+const fontPair = Fonts.Terminus[16]
+
 CanvasDither.create('./icon.jpeg', width, TamanhoImagem.P, logotipoCanvas).then(
   async (dither) => {
-    const printer = new Printer(
-      'Cherry',
-      10, 1,
-      width,
-      TamanhoQR.P,
-      dither.imageData
-    )
-    const link = await printer.renderizarEGerarLink(canvas)
-    console.log(link)
+    montar(canvas, 16, fontPair, 1, TamanhoQR.P, dither.imageData)
+    canvas.toBlob((blob) => console.log(URL.createObjectURL(blob)))
   }
 )
 
